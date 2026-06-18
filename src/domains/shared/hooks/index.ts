@@ -1,1 +1,1 @@
-export {};
+export * from "./use-modal.service";

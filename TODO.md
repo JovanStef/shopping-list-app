@@ -1,4 +1,3 @@
-setup git
 create redux store
 connect to firebase database
 build UI with static data
@@ -95,3 +94,17 @@ itemId:groupId
 1:1,
 3:1,
 5:1
+
+1. I need to create a floating side menu (bottom right corner) that when clicked will have options for creating: shopping list , shopping item, group, category that will invoke the respective modal.
+
+2. i need to create a modal/component for creating a shopping list that will consist of a form with inputs for: name. this component needs to live in the shopping list domain.
+
+3. i need to create a modal/component for creating a category that will consist of a form with inputs for: name. this component needs to live in the category domain.
+
+4. i need to create a modal/component for creating a group that will consist of a form with inputs for: name. this component needs to live in the group domain
+
+5. i need to create a modal/component for creating a shopping item that will consist of a form with inputs for: name and a dropdown for group listing all groups , and a dropdown for category listing all the categories. For both group and categories there should be an option "Add new" in the dropdown that will invoke the respective modal. this component needs to live in the shopping item domain.
+
+6. There should be a reusable modal component in the shared domain that will be used by the domain modal components and controlled by a shared modal service that will also live in the shared domain.
+
+The implementation of the modals should be on the layout level and the invocation should be through a dedicated shared service
