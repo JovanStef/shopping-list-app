@@ -1,74 +1,95 @@
-const MIN_RESPONSE_DELAY_MS = 200;
-const MAX_RESPONSE_DELAY_MS = 600;
+import {
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  setDoc,
+  updateDoc,
+  type CollectionReference,
+  type DocumentData,
+} from "firebase/firestore";
+import { db } from "../../../firebase";
+import type { IdentifiableEntity } from "./entity-util.service";
 
-function getRandomDelayMs(): number {
-  return (
-    Math.floor(
-      Math.random() * (MAX_RESPONSE_DELAY_MS - MIN_RESPONSE_DELAY_MS + 1),
-    ) + MIN_RESPONSE_DELAY_MS
-  );
-}
+export abstract class ApiService<T extends IdentifiableEntity> {
+  protected abstract readonly collectionName: string;
 
-export function simulateHttpResponse<T>(payload: T): Promise<T> {
-  return new Promise((resolve) => {
-    setTimeout(() => resolve(payload), getRandomDelayMs());
-  });
-}
+  private get collectionRef(): CollectionReference<DocumentData> {
+    return collection(db, this.collectionName);
+  }
 
-export function simulateHttpError<T = never>(error: Error): Promise<T> {
-  return new Promise((_, reject) => {
-    setTimeout(() => reject(error), getRandomDelayMs());
-  });
-}
+  private mapSnapshotToEntity(snapshot: DocumentData, snapshotId: string): T {
+    const data = snapshot as T;
+    const id = data.id ?? Number(snapshotId);
 
-export abstract class ApiService<T> {
-  protected abstract readonly endpointUrl: string;
+    return { ...data, id } as T;
+  }
 
-  protected async request<R>(path = "", init: RequestInit = {}): Promise<R> {
-    const response = await fetch(`${this.endpointUrl}${path}`, {
-      headers: {
-        "Content-Type": "application/json",
-        ...(init.headers ?? {}),
-      },
-      ...init,
-    });
+  async getAll(): Promise<T[]> {
+    const querySnapshot = await getDocs(this.collectionRef);
 
-    if (!response.ok) {
-      throw new Error(`Request failed with status ${response.status}`);
+    return querySnapshot.docs.map((snapshot) =>
+      this.mapSnapshotToEntity(snapshot.data(), snapshot.id),
+    );
+  }
+
+  async getById(id: number): Promise<T> {
+    const docRef = doc(this.collectionRef, String(id));
+    const snapshot = await getDoc(docRef);
+
+    if (!snapshot.exists()) {
+      throw new Error(`${this.collectionName} item not found`);
     }
 
-    if (response.status === 204) {
-      return undefined as R;
+    return this.mapSnapshotToEntity(snapshot.data(), snapshot.id);
+  }
+
+  async create(payload: Omit<T, "id"> | T): Promise<T> {
+    const payloadWithId = payload as Partial<T>;
+    const id =
+      payloadWithId.id && payloadWithId.id > 0
+        ? payloadWithId.id
+        : await this.generateNextId();
+
+    const entity = { ...payloadWithId, id } as T;
+
+    await setDoc(doc(this.collectionRef, String(id)), entity as DocumentData);
+
+    return entity;
+  }
+
+  async update(id: number, payload: Partial<T>): Promise<T> {
+    const docRef = doc(this.collectionRef, String(id));
+    const snapshot = await getDoc(docRef);
+
+    if (!snapshot.exists()) {
+      throw new Error(`${this.collectionName} item not found`);
     }
 
-    return (await response.json()) as R;
+    await updateDoc(docRef, payload as Partial<DocumentData>);
+
+    return this.getById(id);
   }
 
-  getAll(): Promise<T[]> {
-    return this.request<T[]>("");
+  async delete(id: number): Promise<void> {
+    const docRef = doc(this.collectionRef, String(id));
+    const snapshot = await getDoc(docRef);
+
+    if (!snapshot.exists()) {
+      throw new Error(`${this.collectionName} item not found`);
+    }
+
+    await deleteDoc(docRef);
   }
 
-  getById(id: number): Promise<T> {
-    return this.request<T>(`/${id}`);
-  }
+  private async generateNextId(): Promise<number> {
+    const items = await this.getAll();
 
-  create(payload: Omit<T, "id"> | T): Promise<T> {
-    return this.request<T>("", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
-  }
+    if (!items.length) {
+      return 1;
+    }
 
-  update(id: number, payload: Partial<T>): Promise<T> {
-    return this.request<T>(`/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(payload),
-    });
-  }
-
-  delete(id: number): Promise<void> {
-    return this.request<void>(`/${id}`, {
-      method: "DELETE",
-    });
+    return Math.max(...items.map((entry) => entry.id)) + 1;
   }
 }

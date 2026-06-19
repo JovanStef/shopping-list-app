@@ -6,9 +6,13 @@ import type { IGroup } from "../models";
 export interface GroupProps {
   group: IGroup;
   itemEntities: Record<string, IShoppingItem>;
+  onItemUpdated: (
+    id: number,
+    checked: boolean,
+  ) => { id: number; checked: boolean };
 }
 
-export function Group({ group, itemEntities }: GroupProps) {
+export function Group({ group, itemEntities, onItemUpdated }: GroupProps) {
   const groupItems = group.items
     .map((id) => itemEntities[id.toString()])
     .filter((item): item is IShoppingItem => Boolean(item));
@@ -34,7 +38,11 @@ export function Group({ group, itemEntities }: GroupProps) {
         ) : (
           <Stack gap="3">
             {groupItems.map((item) => (
-              <ShoppingItem key={item.id} {...item} />
+              <ShoppingItem
+                key={item.id}
+                {...item}
+                onItemUpdated={onItemUpdated}
+              />
             ))}
           </Stack>
         )}

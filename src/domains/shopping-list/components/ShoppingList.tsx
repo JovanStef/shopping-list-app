@@ -59,6 +59,18 @@ export function ShoppingList({ itemIds }: ShoppingListProps) {
     [itemIds, itemToGroupMap],
   );
 
+  const onItemUpdated = async (id: number, checked: boolean): Promise<void> => {
+    const item = itemEntities[id.toString()];
+    await item.update({ ...item, active: checked });
+    await shopingListFeatureService.loadShoppingListWithGroups({
+      setItemEntities,
+      setGroups,
+      setItemToGroupMap,
+      setLoading,
+      setError,
+    });
+  };
+
   if (loading) {
     return <ShoppingItemLoading />;
   }
@@ -85,6 +97,7 @@ export function ShoppingList({ itemIds }: ShoppingListProps) {
                 ...group,
               }}
               itemEntities={visibleItemEntities}
+              onItemUpdated={onItemUpdated}
             />
           ))}
         </Accordion.Root>
@@ -93,7 +106,11 @@ export function ShoppingList({ itemIds }: ShoppingListProps) {
       {ungroupedItemsIds.length > 0 ? (
         <Stack gap="3">
           {ungroupedItemsIds.map((id) => (
-            <ShoppingItem key={id} {...itemEntities[id.toString()]} />
+            <ShoppingItem
+              key={id}
+              {...itemEntities[id.toString()]}
+              onItemUpdated={onItemUpdated}
+            />
           ))}
         </Stack>
       ) : null}

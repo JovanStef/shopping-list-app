@@ -1,18 +1,8 @@
-import {
-  ApiService,
-  simulateHttpError,
-  simulateHttpResponse,
-} from "../../shared/services";
+import { ApiService } from "../../shared/services";
 import { IShoppingList } from "../models";
-import shoppingListData from "../data";
 
 export class ShoppingListApiService extends ApiService<IShoppingList> {
-  protected readonly endpointUrl = "/api/shopping-lists";
-  private readonly data = shoppingListData as IShoppingList[];
-
-  getAll(): Promise<IShoppingList[]> {
-    return simulateHttpResponse(this.data);
-  }
+  protected readonly collectionName = "lists";
 
   async getLists({
     data,
@@ -24,7 +14,7 @@ export class ShoppingListApiService extends ApiService<IShoppingList> {
     loading?: (loading: boolean) => void;
   }): Promise<void> {
     try {
-      const lists = await simulateHttpResponse(this.data);
+      const lists = await this.getAll();
       data?.(lists);
     } catch (fetchError) {
       error?.(
@@ -33,48 +23,5 @@ export class ShoppingListApiService extends ApiService<IShoppingList> {
     } finally {
       loading?.(false);
     }
-  }
-
-  getById(id: number): Promise<IShoppingList> {
-    const list = this.data.find((entry) => entry.id === id);
-
-    if (!list) {
-      return simulateHttpError(new Error("Shopping list not found"));
-    }
-
-    return simulateHttpResponse(list);
-  }
-
-  create(
-    payload: Omit<IShoppingList, "id"> | IShoppingList,
-  ): Promise<IShoppingList> {
-    const nextId = this.data.length
-      ? Math.max(...this.data.map((entry) => entry.id)) + 1
-      : 1;
-
-    return simulateHttpResponse({
-      id: nextId,
-      ...(payload as Omit<IShoppingList, "id">),
-    });
-  }
-
-  update(id: number, payload: Partial<IShoppingList>): Promise<IShoppingList> {
-    const list = this.data.find((entry) => entry.id === id);
-
-    if (!list) {
-      return simulateHttpError(new Error("Shopping list not found"));
-    }
-
-    return simulateHttpResponse({ ...list, ...payload });
-  }
-
-  delete(id: number): Promise<void> {
-    const list = this.data.find((entry) => entry.id === id);
-
-    if (!list) {
-      return simulateHttpError(new Error("Shopping list not found"));
-    }
-
-    return simulateHttpResponse(undefined as void);
   }
 }

@@ -40,7 +40,9 @@ export function FloatingActionMenu() {
             size="lg"
             colorScheme="blue"
             borderRadius="full"
-          />
+          >
+            <FiPlus />
+          </IconButton>
         </Stack>
       </Box>
     </Portal>

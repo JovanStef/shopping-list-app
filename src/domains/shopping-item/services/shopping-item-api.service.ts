@@ -1,20 +1,10 @@
-import {
-  ApiService,
-  simulateHttpError,
-  simulateHttpResponse,
-} from "../../shared/services";
+import { ApiService } from "../../shared/services";
 import { IShoppingItem, ShoppingItemModel } from "../models";
-import shoppingItems from "../data";
 import { ShoppingItemUtilService } from "./shopping-item-util.service";
 
 export class ShoppingItemApiService extends ApiService<IShoppingItem> {
-  protected readonly endpointUrl = "/api/shopping-items";
-  private readonly data = shoppingItems as IShoppingItem[];
+  protected readonly collectionName = "items";
   private readonly shoppingItemUtilsService = new ShoppingItemUtilService();
-
-  getAll(): Promise<IShoppingItem[]> {
-    return simulateHttpResponse(this.data);
-  }
 
   async getItems({
     data,
@@ -28,7 +18,7 @@ export class ShoppingItemApiService extends ApiService<IShoppingItem> {
     loading?: (loading: boolean) => void;
   }): Promise<void> {
     try {
-      const items = await simulateHttpResponse(this.data);
+      const items = await this.getAll();
       const { transformedItems, enteties } =
         this.shoppingItemUtilsService.transform(
           items,
@@ -45,36 +35,103 @@ export class ShoppingItemApiService extends ApiService<IShoppingItem> {
     }
   }
 
-  getById(id: number): Promise<IShoppingItem> {
-    const item = this.data.find((entry) => entry.id === id);
-
-    if (!item) {
-      return simulateHttpError(new Error("Shopping item not found"));
+  async getItem({
+    id,
+    data,
+    error,
+    loading,
+  }: {
+    id: number;
+    data?: (item: IShoppingItem) => void;
+    error?: (msg: string) => void;
+    loading?: (loading: boolean) => void;
+  }): Promise<void> {
+    try {
+      const item = await this.getById(id);
+      data?.(new ShoppingItemModel(item.id, item.name, item.active));
+    } catch (fetchError) {
+      error?.(
+        fetchError instanceof Error ? fetchError.message : String(fetchError),
+      );
+    } finally {
+      loading?.(false);
     }
-
-    return simulateHttpResponse(item);
   }
 
-  create(
-    payload: Omit<IShoppingItem, "id"> | IShoppingItem,
-  ): Promise<IShoppingItem> {
-    return simulateHttpResponse({
-      id: Math.max(...this.data.map((entry) => entry.id)) + 1,
-      ...(payload as Omit<IShoppingItem, "id">),
-    });
-  }
-
-  update(id: number, payload: Partial<IShoppingItem>): Promise<IShoppingItem> {
-    const item = this.data.find((entry) => entry.id === id);
-
-    if (!item) {
-      return simulateHttpError(new Error("Shopping item not found"));
+  async createItem({
+    payload,
+    data,
+    error,
+    loading,
+  }: {
+    payload: Omit<IShoppingItem, "id"> | IShoppingItem;
+    data?: (item: IShoppingItem) => void;
+    error?: (msg: string) => void;
+    loading?: (loading: boolean) => void;
+  }): Promise<void> {
+    try {
+      const item = await this.create(payload);
+      data?.(new ShoppingItemModel(item.id, item.name, item.active));
+    } catch (createError) {
+      error?.(
+        createError instanceof Error
+          ? createError.message
+          : String(createError),
+      );
+    } finally {
+      loading?.(false);
     }
-
-    return simulateHttpResponse({ ...item, ...payload });
   }
 
-  delete(id: number): Promise<void> {
-    return simulateHttpResponse(undefined as void);
+  async updateItem({
+    id,
+    payload,
+    data,
+    error,
+    loading,
+  }: {
+    id: number;
+    payload: Partial<IShoppingItem>;
+    data?: (item: IShoppingItem) => void;
+    error?: (msg: string) => void;
+    loading?: (loading: boolean) => void;
+  }): Promise<void> {
+    try {
+      const item = await this.update(id, payload);
+      data?.(new ShoppingItemModel(item.id, item.name, item.active));
+    } catch (updateError) {
+      error?.(
+        updateError instanceof Error
+          ? updateError.message
+          : String(updateError),
+      );
+    } finally {
+      loading?.(false);
+    }
+  }
+
+  async deleteItem({
+    id,
+    success,
+    error,
+    loading,
+  }: {
+    id: number;
+    success?: () => void;
+    error?: (msg: string) => void;
+    loading?: (loading: boolean) => void;
+  }): Promise<void> {
+    try {
+      await this.delete(id);
+      success?.();
+    } catch (deleteError) {
+      error?.(
+        deleteError instanceof Error
+          ? deleteError.message
+          : String(deleteError),
+      );
+    } finally {
+      loading?.(false);
+    }
   }
 }
